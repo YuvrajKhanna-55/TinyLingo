@@ -9,7 +9,7 @@ DATASET_DIR = Path(__file__).parent.parent / "dataset" / "processed"
 ARTIFACT_DIR = Path(__file__).parent / "artifacts"
 ARTIFACT_DIR.mkdir(exist_ok=True)
 
-LANGUAGES = ["en", "hi", "fr", "es", "de", "ru", "ja"]
+LANGUAGES = ["en", "hi", "fr", "es", "de", "ru"]
 DIRECTION_TAGS = [f"<2{lang}>" for lang in LANGUAGES]
 VOCAB_SIZE = 32000
 CORPUS_PATH = ARTIFACT_DIR / "tinylingo_corpus.txt"

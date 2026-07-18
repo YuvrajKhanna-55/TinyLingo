@@ -42,6 +42,11 @@ def save_checkpoint(path, model, optimizer, epoch, global_step, best_val_loss):
     }, path)
     print(f"    [checkpoint saved: {path}]")
 
+def get_lr_schedule(d_model, warmup_steps=4000):
+    def lr_lambda(step):
+        step = max(step, 1)
+        return (d_model ** -0.5) * min(step ** -0.5, step * (warmup_steps ** -1.5))
+    return lr_lambda
 
 def load_checkpoint(path, model, optimizer, device):
     checkpoint = torch.load(path, map_location=device)
@@ -76,6 +81,8 @@ def run_epoch(model, dataloader, optimizer, loss_fn, pad_id, device,
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), CONFIG["grad_clip_norm"])
                 optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
                 global_step += 1
                 if on_step_end is not None:
                     on_step_end(global_step)
@@ -118,7 +125,8 @@ if __name__ == "__main__":
         max_seq_len=CONFIG["max_seq_len"], dropout=CONFIG["dropout"]
     ).to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=CONFIG["learning_rate"])
+    optimizer = torch.optim.Adam(model.parameters(), lr=1.0, betas=(0.9, 0.98), eps=1e-9)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=get_lr_schedule(CONFIG["d_model"]))
     loss_fn = nn.CrossEntropyLoss(ignore_index=tok.pad_id)
 
     print(f"Total parameters: {sum(p.numel() for p in model.parameters()):,}")

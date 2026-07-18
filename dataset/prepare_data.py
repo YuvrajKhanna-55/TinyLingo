@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 OUTPUT_DIR = Path(__file__).parent / "processed"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-LANG_PAIRS = ["hi", "fr", "es", "de", "ru", "ja"]
+LANG_PAIRS = ["hi", "fr", "es", "de", "ru"]
 SUBSET_SIZE = 100_000
 
 MIN_LEN_BY_LANG = {"en": 3, "hi": 3, "fr": 3, "es": 3, "de": 3, "ru": 3, "ja": 2}
