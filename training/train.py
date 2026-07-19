@@ -1,12 +1,15 @@
-import sys, os
+import sys
+import os
+import time
+import torch
+import torch.nn as nn
+
+# Clean up path resolutions cleanly
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(THIS_DIR)
 sys.path.append(os.path.join(PROJECT_ROOT, "tinylingo"))
 sys.path.append(os.path.join(PROJECT_ROOT, "tokeniser"))
 
-import time
-import torch
-import torch.nn as nn
 from tokenizer_wrapper import TranslationTokenizer
 from transformer import Transformer
 from dataset import make_dataloader
