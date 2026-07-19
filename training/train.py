@@ -26,7 +26,7 @@ CONFIG = {
     "learning_rate": 1e-4,
     "num_epochs": 10,
     "grad_clip_norm": 1.0,
-    "log_every_n_batches": 100,
+    "log_every_n_batches": 100,  
     "save_every_n_steps": 2000,   
     "checkpoint_dir": os.path.join(PROJECT_ROOT, "training", "checkpoints"),
     "resume_from": None,
