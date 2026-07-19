@@ -4,7 +4,7 @@ import time
 import torch
 import torch.nn as nn
 
-# Clean up path resolutions cleanly
+
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(THIS_DIR)
 sys.path.append(os.path.join(PROJECT_ROOT, "tinylingo"))
@@ -26,7 +26,7 @@ CONFIG = {
     "learning_rate": 1e-4,
     "num_epochs": 10,
     "grad_clip_norm": 1.0,
-    "log_every_n_batches": 100,  
+    "log_every_n_batches": 100,
     "save_every_n_steps": 2000,   
     "checkpoint_dir": os.path.join(PROJECT_ROOT, "training", "checkpoints"),
     "resume_from": None,
@@ -39,7 +39,7 @@ def save_checkpoint(path, model, optimizer, scheduler, epoch, global_step, best_
         "global_step": global_step,
         "model_state_dict": model.state_dict(),
         "optimizer_state_dict": optimizer.state_dict(),
-        "scheduler_state_dict": scheduler.state_dict(),  # Fixed: Saved scheduler state
+        "scheduler_state_dict": scheduler.state_dict(),
         "best_val_loss": best_val_loss,
         "config": CONFIG,
     }, path)
@@ -56,7 +56,7 @@ def load_checkpoint(path, model, optimizer, scheduler, device):
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     if "scheduler_state_dict" in checkpoint and scheduler is not None:
-        scheduler.load_state_dict(checkpoint["scheduler_state_dict"]) # Fixed: Loaded scheduler state
+        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
     print(f"Resumed from {path} -- epoch {checkpoint['epoch']}, step {checkpoint['global_step']}")
     return checkpoint["epoch"], checkpoint["global_step"], checkpoint["best_val_loss"]
 
@@ -96,8 +96,9 @@ def run_epoch(model, dataloader, optimizer, scheduler, loss_fn, pad_id, device,
 
             if training and (batch_idx + 1) % log_every == 0:
                 elapsed = time.time() - start_time
+                current_lr = optimizer.param_groups[0]['lr']
                 print(f"  epoch {epoch_num} | batch {batch_idx+1}/{len(dataloader)} "
-                      f"| loss {loss.item():.4f} | {elapsed:.1f}s elapsed")
+                      f"| loss {loss.item():.4f} | lr {current_lr:.2e} | {elapsed:.1f}s elapsed")
 
     avg_loss = total_loss / total_examples
     return avg_loss, global_step
