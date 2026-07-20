@@ -4,7 +4,6 @@ import time
 import torch
 import torch.nn as nn
 
-
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(THIS_DIR)
 sys.path.append(os.path.join(PROJECT_ROOT, "tinylingo"))
@@ -23,14 +22,33 @@ CONFIG = {
     "max_seq_len": 64,
     "dropout": 0.1,
     "batch_size": 64,
-    "learning_rate": 1e-4,
+    "warmup_steps": 4000,
     "num_epochs": 10,
     "grad_clip_norm": 1.0,
     "log_every_n_batches": 100,
-    "save_every_n_steps": 2000,   
-    "checkpoint_dir": os.path.join(PROJECT_ROOT, "training", "checkpoints"),
+    "save_every_n_steps": 2000,
+    "checkpoint_dir": "/content/drive/MyDrive/TinyLingo_checkpoints_v3_clean",
     "resume_from": None,
 }
+
+LOSS_LOG_PATH = os.path.join(CONFIG["checkpoint_dir"], "loss_history.csv")
+
+
+def log_epoch_result(epoch, train_loss, val_loss, lr):
+    os.makedirs(os.path.dirname(LOSS_LOG_PATH), exist_ok=True)
+    file_exists = os.path.exists(LOSS_LOG_PATH)
+    with open(LOSS_LOG_PATH, "a") as f:
+        if not file_exists:
+            f.write("epoch,train_loss,val_loss,lr\n")
+        f.write(f"{epoch},{train_loss:.4f},{val_loss:.4f},{lr:.6e}\n")
+
+
+def get_lr_schedule(d_model, warmup_steps=4000):
+    def lr_lambda(step):
+        step = max(step, 1)
+        return (d_model ** -0.5) * min(step ** -0.5, step * (warmup_steps ** -1.5))
+    return lr_lambda
+
 
 def save_checkpoint(path, model, optimizer, scheduler, epoch, global_step, best_val_loss):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -45,25 +63,19 @@ def save_checkpoint(path, model, optimizer, scheduler, epoch, global_step, best_
     }, path)
     print(f"    [checkpoint saved: {path}]")
 
-def get_lr_schedule(d_model, warmup_steps=4000):
-    def lr_lambda(step):
-        step = max(step, 1)
-        return (d_model ** -0.5) * min(step ** -0.5, step * (warmup_steps ** -1.5))
-    return lr_lambda
 
 def load_checkpoint(path, model, optimizer, scheduler, device):
     checkpoint = torch.load(path, map_location=device)
     model.load_state_dict(checkpoint["model_state_dict"])
     optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-    if "scheduler_state_dict" in checkpoint and scheduler is not None:
-        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
     print(f"Resumed from {path} -- epoch {checkpoint['epoch']}, step {checkpoint['global_step']}")
     return checkpoint["epoch"], checkpoint["global_step"], checkpoint["best_val_loss"]
+
 
 def run_epoch(model, dataloader, optimizer, scheduler, loss_fn, pad_id, device,
               training, epoch_num, global_step, log_every=100, on_step_end=None):
     model.train() if training else model.eval()
-
     total_loss, total_examples = 0.0, 0
     start_time = time.time()
 
@@ -103,6 +115,7 @@ def run_epoch(model, dataloader, optimizer, scheduler, loss_fn, pad_id, device,
     avg_loss = total_loss / total_examples
     return avg_loss, global_step
 
+
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("device:", device)
@@ -130,7 +143,9 @@ if __name__ == "__main__":
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1.0, betas=(0.9, 0.98), eps=1e-9)
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=get_lr_schedule(CONFIG["d_model"]))
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lr_lambda=get_lr_schedule(CONFIG["d_model"], CONFIG["warmup_steps"])
+    )
     loss_fn = nn.CrossEntropyLoss(ignore_index=tok.pad_id)
 
     print(f"Total parameters: {sum(p.numel() for p in model.parameters()):,}")
@@ -166,6 +181,7 @@ if __name__ == "__main__":
         )
         print(f"Epoch {epoch} val loss: {val_loss:.4f}")
 
+        log_epoch_result(epoch, train_loss, val_loss, optimizer.param_groups[0]['lr'])
         save_checkpoint(latest_path, model, optimizer, scheduler, epoch, global_step, best_val_loss)
 
         if val_loss < best_val_loss:
